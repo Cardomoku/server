@@ -1,7 +1,6 @@
 package com.jjweidon.cardomoku.domain.user.service;
 
-import com.jjweidon.cardomoku.domain.user.dto.UpdateUserProfileRequest;
-import com.jjweidon.cardomoku.domain.user.dto.UserProfileResponse;
+import com.jjweidon.cardomoku.domain.user.dto.*;
 import com.jjweidon.cardomoku.domain.user.entity.User;
 import com.jjweidon.cardomoku.domain.user.exception.UserNotFoundException;
 import com.jjweidon.cardomoku.domain.user.repository.UserRepository;
@@ -24,12 +23,36 @@ public class UserService {
 
     // 프로필 수정
     @Transactional
-    public UserProfileResponse updateProfile(String userId, UpdateUserProfileRequest request) {
+    public UpdateUserResponse updateProfile(String userId, UpdateUserProfileRequest request) {
         User user = findUserByUserId(userId);
         user.changeNickname(request.getNickname());
         user.changeProfileImage(request.getImage());
         userRepository.save(user);
-        return UserProfileResponse.from(user);
+        return UpdateUserResponse.from(user);
+    }
+
+    // 코인 조회
+    @Transactional(readOnly = true)
+    public UserCoinResponse getCoins(String userId) {
+        User user = findUserByUserId(userId);
+        return UserCoinResponse.from(user);
+    }
+
+    // 소리 설정 조회
+    @Transactional(readOnly = true)
+    public SoundSettingsResponse getSoundSettings(String userId) {
+        User user = findUserByUserId(userId);
+        return SoundSettingsResponse.from(user);
+    }
+
+    // 소리 설정 수정
+    @Transactional
+    public UpdateUserResponse updateSoundSettings(String userId, UpdateSoundSettingsRequest request) {
+        User user = findUserByUserId(userId);
+        user.setSoundEffectsEnabled(request.isSoundEffectsEnabled());
+        user.setBackgroundMusicEnabled(request.isBackgroundMusicEnabled());
+        userRepository.save(user);
+        return UpdateUserResponse.from(user);
     }
 
     public User findUserByUserId(String userId) {
