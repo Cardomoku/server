@@ -1,5 +1,6 @@
 package com.jjweidon.cardomoku.entity;
 
+import com.jjweidon.cardomoku.entity.enums.Color;
 import com.jjweidon.cardomoku.global.entity.BaseTime;
 import de.huxhorn.sulky.ulid.ULID;
 import jakarta.persistence.*;
@@ -10,25 +11,30 @@ import lombok.*;
 @Builder
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class RoomHistory extends BaseTime {
+public class Player extends BaseTime {
 
     @Id
-    @Column(name = "room_id")
+    @Column(name = "player_id")
     @Builder.Default
     private final String id = new ULID().nextULID();
 
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long turn;
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "room_id", nullable = false)
     private Room room;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "player_id", nullable = false)
-    private User player;
+    @Builder.Default
+    private Boolean is_owner = false;
 
-    private int card;
+    @Enumerated(EnumType.STRING)
+    private Color color;
 
-    private int position;
+    int fourCreated;
+
+    int bingoCreated;
+
+    int jsUsed;
 }

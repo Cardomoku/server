@@ -1,0 +1,14 @@
+package com.jjweidon.cardomoku.dto;
+
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.Builder;
+import lombok.Getter;
+
+@Getter
+@Builder
+@JsonNaming(value = PropertyNamingStrategies.SnakeCaseStrategy.class)
+public class UserSoundResponse {
+    private boolean soundEffectsEnabled;
+    private boolean backgroundMusicEnabled;
+}

@@ -1,6 +1,7 @@
 package com.jjweidon.cardomoku.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.jjweidon.cardomoku.entity.enums.GameStatus;
 import com.jjweidon.cardomoku.entity.enums.RoomType;
 import com.jjweidon.cardomoku.global.entity.BaseTime;
 import de.huxhorn.sulky.ulid.ULID;
@@ -24,9 +25,15 @@ public class Room extends BaseTime {
     @Enumerated(EnumType.STRING)
     private RoomType roomType;
 
+    @Column(unique = true, nullable = false)
     private String code;
 
+    @Builder.Default
+    private GameStatus status = GameStatus.NOT_STARTED;
+
     @JsonIgnore
-    @OneToMany(mappedBy = "room", fetch = FetchType.LAZY)
-    private List<User> players;
+    @OneToMany(mappedBy = "room_id", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private List<Player> players;
+
+    private int totalCoins;
 }

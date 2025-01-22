@@ -22,6 +22,8 @@ public class User extends BaseTime {
 
     private String nickname;
 
+    private String image;
+
     @Enumerated(EnumType.STRING)
     private Role role;
 
@@ -33,9 +35,44 @@ public class User extends BaseTime {
 
     private int draw;
 
+    @Setter
     @Builder.Default
     private boolean soundEffectsEnabled = true;
 
+    @Setter
     @Builder.Default
     private boolean backgroundMusicEnabled = true;
+
+    ///// 도메인 메서드 /////
+
+    public void changeNickname(String newNickname) {
+        this.nickname = newNickname;
+    }
+
+    public void changeProfileImage(String newImage) {
+        this.image = newImage;
+    }
+
+    public void earnCoin(int amount) {
+        this.coin += amount;
+    }
+
+    public void loseCoin(int amount) {
+        if (this.coin < amount) {
+            throw new IllegalStateException("코인이 부족합니다.");
+        }
+        this.coin -= amount;
+    }
+
+    public void addWin() {
+        this.win++;
+    }
+
+    public void addLose() {
+        this.lose++;
+    }
+
+    public void addDraw() {
+        this.draw++;
+    }
 }
