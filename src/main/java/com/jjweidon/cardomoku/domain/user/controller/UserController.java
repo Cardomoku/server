@@ -3,6 +3,7 @@ package com.jjweidon.cardomoku.domain.user.controller;
 import com.jjweidon.cardomoku.domain.user.dto.*;
 import com.jjweidon.cardomoku.global.dto.ApiResponse;
 import com.jjweidon.cardomoku.domain.user.service.UserService;
+import com.jjweidon.cardomoku.global.dto.Response;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
@@ -18,7 +19,7 @@ public class UserController {
 
     // 프로필 조회
     @GetMapping("/profile")
-    public ApiResponse<UserProfileResponse> getProfile(Authentication authentication) {
+    public ApiResponse<Response> getProfile(Authentication authentication) {
         String userId = ((CustomUserDetails) authentication.getPrincipal()).getId();
         log.info("GET 회원 정보 조회: {}", userId);
         UserProfileResponse response = userService.getProfile(userId);
@@ -27,7 +28,7 @@ public class UserController {
 
     // 프로필 수정
     @PutMapping("/profile")
-    public ApiResponse<UpdateUserResponse> updateProfile(
+    public ApiResponse<Response> updateProfile(
             Authentication authentication,
             @RequestBody UpdateUserProfileRequest request) {
         String userId = ((CustomUserDetails) authentication.getPrincipal()).getId();
@@ -37,7 +38,7 @@ public class UserController {
 
     // 코인 조회
     @GetMapping("/coins")
-    public ApiResponse<UserCoinResponse> getCoins(Authentication authentication) {
+    public ApiResponse<Response> getCoins(Authentication authentication) {
         String userId = ((CustomUserDetails) authentication.getPrincipal()).getId();
         log.info("GET 코인 조회: {}", userId);
         UserCoinResponse response = userService.getCoins(userId);
@@ -46,7 +47,7 @@ public class UserController {
 
     // 소리 설정 조회
     @GetMapping("/bgm")
-    public ApiResponse<SoundSettingsResponse> getSoundSettings(Authentication authentication) {
+    public ApiResponse<Response> getSoundSettings(Authentication authentication) {
         String userId = ((CustomUserDetails) authentication.getPrincipal()).getId();
         log.info("GET 소리 설정 조회: {}", userId);
         SoundSettingsResponse response = userService.getSoundSettings(userId);
@@ -55,7 +56,7 @@ public class UserController {
 
     // 소리 설정 수정
     @PutMapping("/bgm")
-    public ApiResponse<UpdateUserResponse> updateSoundSettings(
+    public ApiResponse<Response> updateSoundSettings(
             Authentication authentication,
             @RequestBody UpdateSoundSettingsRequest request) {
         String userId = ((CustomUserDetails) authentication.getPrincipal()).getId();

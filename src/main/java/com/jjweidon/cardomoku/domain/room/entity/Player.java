@@ -27,9 +27,9 @@ public class Player extends BaseTime {
     @JoinColumn(name = "room_id", nullable = false)
     private Room room;
 
-    @Builder.Default
-    private Boolean is_owner = false;
+    private Boolean isOwner;
 
+    @Setter
     @Enumerated(EnumType.STRING)
     private Color color;
 
@@ -37,5 +37,5 @@ public class Player extends BaseTime {
 
     int bingoCreated;
 
-    int jsUsed;
+    int jUsed;
 }

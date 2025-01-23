@@ -27,7 +27,8 @@ public class User extends BaseTime {
     @Enumerated(EnumType.STRING)
     private Role role;
 
-    private int coin;
+    @Builder.Default
+    private int coin = 1000;
 
     private int win;
 

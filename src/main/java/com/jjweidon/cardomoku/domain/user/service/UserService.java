@@ -55,7 +55,7 @@ public class UserService {
         return UpdateUserResponse.from(user);
     }
 
-    public User findUserByUserId(String userId) {
+    private User findUserByUserId(String userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException(userId));
     }

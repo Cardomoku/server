@@ -1,5 +1,6 @@
 package com.jjweidon.cardomoku.global.exception;
 
+import com.jjweidon.cardomoku.domain.room.exception.RoomNotFoundException;
 import com.jjweidon.cardomoku.domain.user.exception.UserNotFoundException;
 import com.jjweidon.cardomoku.global.dto.ApiResponse;
 import org.springframework.http.HttpStatus;
@@ -12,6 +13,12 @@ public class GlobalExceptionHandler {
     // UserNotFoundException 처리
     @ExceptionHandler(UserNotFoundException.class)
     public ApiResponse<Object> handleUserNotFoundException(UserNotFoundException ex) {
+        return ApiResponse.failure(ex.getMessage(), HttpStatus.NOT_FOUND);
+    }
+
+    // RoomNotFoundException 처리
+    @ExceptionHandler(RoomNotFoundException.class)
+    public ApiResponse<Object> handleRoomNotFoundException(RoomNotFoundException ex) {
         return ApiResponse.failure(ex.getMessage(), HttpStatus.NOT_FOUND);
     }
 
