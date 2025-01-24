@@ -1,15 +1,14 @@
 package com.jjweidon.cardomoku.domain.room.service;
 
-import com.jjweidon.cardomoku.domain.game.dto.GameResponse;
-import com.jjweidon.cardomoku.domain.game.entity.Game;
 import com.jjweidon.cardomoku.domain.game.entity.enums.GameStatus;
-import com.jjweidon.cardomoku.domain.game.repository.GameRepository;
 import com.jjweidon.cardomoku.domain.game.service.GameService;
-import com.jjweidon.cardomoku.domain.room.dto.*;
+import com.jjweidon.cardomoku.domain.room.dto.CreateRoomRequest;
+import com.jjweidon.cardomoku.domain.room.dto.RoomCodeRequest;
+import com.jjweidon.cardomoku.domain.room.dto.RoomResponse;
+import com.jjweidon.cardomoku.domain.room.dto.RoomTypeRequest;
 import com.jjweidon.cardomoku.domain.room.entity.Player;
 import com.jjweidon.cardomoku.domain.room.entity.Room;
 import com.jjweidon.cardomoku.domain.room.entity.enums.RoomType;
-import com.jjweidon.cardomoku.domain.room.exception.PlayerNotFoundException;
 import com.jjweidon.cardomoku.domain.room.exception.RoomNotFoundException;
 import com.jjweidon.cardomoku.domain.room.repository.PlayerRepository;
 import com.jjweidon.cardomoku.domain.room.repository.RoomRepository;

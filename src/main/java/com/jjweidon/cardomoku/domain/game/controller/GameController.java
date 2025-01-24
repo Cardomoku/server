@@ -44,9 +44,9 @@ public class GameController {
 
     // 나의 카드 조회
     @PostMapping("/my-cards")
-    public ApiResponse<Response> getMyCards(Authentication authentication, @RequestBody FindGameRequest request) {
+    public ApiResponse<Response> getMyCards(Authentication authentication) {
         User user = (User) authentication.getPrincipal();
-        MyCardsResponse response = gameService.getMyCards(request.getGameId(), user);
+        MyCardsResponse response = gameService.getMyCards(user);
         return ApiResponse.success(response, "나의 카드 조회 성공");
     }
 

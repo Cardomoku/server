@@ -52,4 +52,16 @@ public class Player extends BaseTime {
     public void endTurn() {
         this.isTurn = false;
     }
+
+    public void addBingoCreated() {
+        this.bingoCreated++;
+    }
+
+    public void addFourCreated() {
+        this.fourCreated++;
+    }
+
+    public void addJUsed() {
+        this.jUsed++;
+    }
 }

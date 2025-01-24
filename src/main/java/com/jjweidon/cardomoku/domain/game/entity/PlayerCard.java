@@ -20,7 +20,7 @@ public class PlayerCard extends BaseTime {
     private final String id = new ULID().nextULID();
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "player_id", nullable = false)
+    @JoinColumn(name = "player_id", nullable = true)
     private Player player;
 
     @Enumerated(EnumType.STRING)

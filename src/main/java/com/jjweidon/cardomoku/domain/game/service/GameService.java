@@ -23,6 +23,8 @@ import com.jjweidon.cardomoku.domain.user.entity.User;
 import com.jjweidon.cardomoku.global.entity.enums.Color;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -39,8 +41,10 @@ public class GameService {
     private final PlayerRepository playerRepository;
     private final BoardRepository boardRepository;
     private final PlayerCardRepository playerCardRepository;
+    private final SimpMessagingTemplate messagingTemplate;
 
     // 게임 시작
+    @Transactional
     public GameResponse startGame(User user, StartGameRequest request) {
         Room room = roomRepository.findById(request.getRoomId())
                 .orElseThrow(RoomNotFoundException::new);
@@ -56,6 +60,7 @@ public class GameService {
     }
 
     // 게임판 조회
+    @Transactional(readOnly = true)
     public GameBoardResponse getGameBoard(String gameId) {
         Game game = findGameById(gameId);
         List<Board> boards = boardRepository.findByGame(game);
@@ -66,6 +71,7 @@ public class GameService {
     }
 
     // 플레이어 조회
+    @Transactional(readOnly = true)
     public PlayersResponse getPlayers(String gameId) {
         Game game = findGameById(gameId);
         List<Player> players = playerRepository.findByRoom(game.getRoom());
@@ -76,8 +82,8 @@ public class GameService {
     }
 
     // 나의 카드 조회
-    public MyCardsResponse getMyCards(String gameId, User user) {
-        Game game = findGameById(gameId);
+    @Transactional(readOnly = true)
+    public MyCardsResponse getMyCards(User user) {
         Player player = playerRepository.findByUser(user)
                 .orElseThrow(PlayerNotFoundException::new);
         List<PlayerCard> playerCards = playerCardRepository.findByPlayer(player);
@@ -88,23 +94,37 @@ public class GameService {
     }
 
     // 카드 사용
+    @Transactional
     public void useCard(User user, UseCardRequest request) {
         Game game = findGameById(request.getGameId());
-        Player player = playerRepository.findByUser(user)
-                .orElseThrow(PlayerNotFoundException::new);
+        Player player = findPlayerByUser(user);
         Board board = findBoardById(request.getBoardId());
-        if (board.getStatus() != Color.EMPTY) {
-            throw new IllegalStateException("이미 채워진 Board");
-        }
+        PlayerCard playerCard = findPlayerCardById(request.getPlayerCardId());
+        
+        validateTurn(player, game);
+        validateCardUsage(playerCard, board);
+        
+        // 카드 사용 처리
+        applyCardEffect(playerCard, board, player);
+        // 빙고 체크
+        checkBingo(game, board, player);
+        // 승리 조건 확인
+        checkWinCondition(game);
+        // 다음 턴 처리
+        processNextTurn(game);
+        // 카드 사용 후 게임 상태 변경 알림
+        notifyGameStateChange(game, "CARD_USED", BoardData.from(board));
     }
 
     // 게임 상태 확인
+    @Transactional(readOnly = true)
     public GameStatusResponse checkGameOver(String gameId) {
         Game game = findGameById(gameId);
         return GameStatusResponse.from(game);
     }
 
     // 결과 조회
+    @Transactional(readOnly = true)
     public GameResultResponse getGameResult(String gameId) {
         Game game = findGameById(gameId);
         List<Player> players = playerRepository.findByRoom(game.getRoom());
@@ -139,26 +159,20 @@ public class GameService {
 
     // PlayerCard 배분
     private void initializePlayerCards(Game game) {
-        List<Card> allCards = new ArrayList<>(Arrays.asList(Card.values()));
-        Collections.shuffle(allCards);
-
         List<Player> players = playerRepository.findByRoom(game.getRoom());
-
         final int CARDS_PER_PLAYER = 6;
 
         List<PlayerCard> playerCards = new ArrayList<>();
         for (Player player : players) {
             for (int i = 0; i < CARDS_PER_PLAYER; i++) {
+                Card card = game.drawCard();
                 PlayerCard playerCard = PlayerCard.builder()
                         .player(player)
-                        .card(allCards.remove(0))
+                        .card(card)
                         .build();
                 playerCards.add(playerCard);
             }
         }
-
-        // 남은 카드는 게임 상태와 연관된 별도의 카드 더미로 관리 가능
-        // 예: game.setRemainingCards(allCards);
 
         playerCardRepository.saveAll(playerCards);
     }
@@ -169,15 +183,250 @@ public class GameService {
                 .orElseThrow(() -> new GameNotFoundException(gameId));
     }
 
-    // Player 찾기
+    // User로 Player 찾기
     public Player findPlayerByUser(User user) {
         return playerRepository.findByUser(user)
                 .orElseThrow(PlayerNotFoundException::new);
     }
 
-    // Player 찾기
+    // Id로 Player 찾기
     private Board findBoardById(String boardId) {
         return boardRepository.findById(boardId)
                 .orElseThrow(BoardNotFoundException::new);
+    }
+
+    private PlayerCard findPlayerCardById(String playerCardId) {
+        return playerCardRepository.findById(playerCardId)
+                .orElseThrow(PlayerNotFoundException::new);
+    }
+
+    private void validateTurn(Player player, Game game) {
+        if (!player.getIsTurn()) {
+            throw new IllegalStateException("현재 플레이어의 턴이 아닙니다.");
+        }
+    }
+
+    private void validateCardUsage(PlayerCard playerCard, Board board) {
+        // 카드와 보드의 카드가 일치하는지 확인
+        if (playerCard.getCard() != board.getCard()) {
+            throw new IllegalStateException("선택한 카드와 보드의 카드가 일치하지 않습니다.");
+        }
+        // 보드가 이미 사용되었는지 확인
+        if (board.getStatus() != Color.EMPTY) {
+            throw new IllegalStateException("이미 사용된 보드입니다.");
+        }
+    }
+
+    private void applyCardEffect(PlayerCard playerCard, Board board, Player player) {
+        Card card = playerCard.getCard();
+        if (isJCard(card)) {
+            validateJCardUsage(card, board);
+            applyJCardEffect(card, board, player);
+        } else {
+            board.setStatus(player.getColor());
+        }
+        playerCardRepository.delete(playerCard);
+        drawNewCard(player);
+    }
+
+    private void checkBingo(Game game, Board board, Player player) {
+        List<Board> boards = boardRepository.findByGame(game);
+        Color playerColor = player.getColor();
+        int bingoCount = 0;
+        // 가로 빙고 체크
+        bingoCount += checkHorizontalBingo(boards, board.getX(), playerColor);
+        // 세로 빙고 체크
+        bingoCount += checkVerticalBingo(boards, board.getY(), playerColor);
+        // 대각선 빙고 체크
+        bingoCount += checkDiagonalBingo(boards, board.getX(), board.getY(), playerColor);
+        // 빙고 달성 시 플레이어 기여도 업데이트
+        if (bingoCount > 0) {
+            player.addBingoCreated();
+        }
+    }
+
+    private void checkWinCondition(Game game) {
+        List<Player> players = playerRepository.findByRoom(game.getRoom());
+        
+        for (Player player : players) {
+            if (player.getBingoCreated() >= 2) {
+                // 게임 종료 처리
+                game.getRoom().changeStatus(GameStatus.TERMINATED);
+                distributeRewards(game, player.getColor());
+                notifyGameStateChange(game, "GAME_OVER", GameResultResponse.from(game, 
+                    players.stream().map(ContributionData::from).toList()));
+                break;
+            }
+        }
+    }
+
+    private void processNextTurn(Game game) {
+        List<Player> players = playerRepository.findByRoom(game.getRoom());
+        Player currentPlayer = players.stream()
+                .filter(Player::getIsTurn)
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("현재 턴인 플레이어를 찾을 수 없습니다."));
+        // 현재 플레이어 턴 종료
+        currentPlayer.endTurn();;
+        // 다음 플레이어 턴 시작
+        int currentIndex = players.indexOf(currentPlayer);
+        int nextIndex = (currentIndex + 1) % players.size();
+        Player nextPlayer = players.get(nextIndex);
+        nextPlayer.startTurn();
+        // 턴 변경 알림
+        notifyGameStateChange(game, "TURN_CHANGED", PlayerData.from(nextPlayer));
+    }
+
+    // 헬퍼 메서드들
+    private boolean isJCard(Card card) {
+        return card.getRank().equals("j");
+    }
+
+    private void validateJCardUsage(Card card, Board board) {
+        // J 카드 사용 검증 로직
+        if (card.getVersion() == 1) {  // 한 눈 J
+            if (board.getStatus() == Color.EMPTY) {
+                throw new IllegalStateException("한 눈 J 카드는 이미 놓여진 칩만 제거할 수 있습니다.");
+            }
+            // 빙고를 구성하는 칩인지 확인하는 로직 추가
+            if (isPartOfBingo(board)) {
+                throw new IllegalStateException("이 칩은 빙고를 구성합니다.");
+            }
+        } else {  // 두 눈 J
+            if (board.getStatus() != Color.EMPTY) {
+                throw new IllegalStateException("두 눈 J 카드는 비어있는 칸에만 사용할 수 있습니다.");
+            }
+        }
+    }
+
+    private boolean isPartOfBingo(Board board) {
+        List<Board> boards = boardRepository.findByGame(board.getGame());
+        Color color = board.getStatus();
+        // 가로, 세로, 대각선 빙고 체크
+        return checkHorizontalBingo(boards, board.getX(), color) > 0 ||
+               checkVerticalBingo(boards, board.getY(), color) > 0 ||
+               checkDiagonalBingo(boards, board.getX(), board.getY(), color) > 0;
+    }
+
+    private void applyJCardEffect(Card card, Board board, Player player) {
+        if (card.getVersion() == 1) {  // 한 눈 J
+            board.setStatus(Color.EMPTY);
+        } else {  // 두 눈 J
+            board.setStatus(player.getColor());
+        }
+        player.addJUsed();
+    }
+
+    private void drawNewCard(Player player) {
+        Game game = gameRepository.findByRoom(player.getRoom())
+                .orElseThrow(GameNotFoundException::new);
+        Card newCard = game.drawCard();
+        PlayerCard playerCard = PlayerCard.builder()
+                .player(player)
+                .card(newCard)
+                .build();
+        playerCardRepository.save(playerCard);
+    }
+
+    private int checkHorizontalBingo(List<Board> boards, int x, Color color) {
+        long count = boards.stream()
+                .filter(b -> b.getX() == x && b.getStatus() == color)
+                .count();
+        return count >= 5 ? 1 : 0;
+    }
+
+    private int checkVerticalBingo(List<Board> boards, int y, Color color) {
+        long count = boards.stream()
+                .filter(b -> b.getY() == y && b.getStatus() == color)
+                .count();
+        return count >= 5 ? 1 : 0;
+    }
+
+    private int checkDiagonalBingo(List<Board> boards, int x, int y, Color color) {
+        int bingoCount = 0;
+        
+        // 왼쪽 위에서 오른쪽 아래로 가는 대각선 (\) 체크
+        int count = 0;
+        for (int i = -4; i <= 4; i++) {
+            int checkX = x + i;
+            int checkY = y + i;
+            if (checkX < 0 || checkX >= 10 || checkY < 0 || checkY >= 10) {
+                continue;
+            }
+            boolean hasChip = boards.stream()
+                    .anyMatch(b -> b.getX() == checkX && 
+                                 b.getY() == checkY && 
+                                 b.getStatus() == color);
+                                 
+            if (hasChip) {
+                count++;
+                if (count >= 5) {
+                    bingoCount++;
+                    break;
+                }
+            } else {
+                count = 0;
+            }
+        }
+        
+        // 오른쪽 위에서 왼쪽 아래로 가는 대각선 (/) 체크
+        count = 0;
+        for (int i = -4; i <= 4; i++) {
+            int checkX = x - i;
+            int checkY = y + i;
+            
+            if (checkX < 0 || checkX >= 10 || checkY < 0 || checkY >= 10) {
+                continue;
+            }
+            boolean hasChip = boards.stream()
+                    .anyMatch(b -> b.getX() == checkX && 
+                                 b.getY() == checkY && 
+                                 b.getStatus() == color);
+                                 
+            if (hasChip) {
+                count++;
+                if (count >= 5) {
+                    bingoCount++;
+                    break;
+                }
+            } else {
+                count = 0;
+            }
+        }
+        
+        return bingoCount;
+    }
+
+    private void distributeRewards(Game game, Color winningColor) {
+        Room room = game.getRoom();
+        List<Player> winners = playerRepository.findByRoom(room).stream()
+                .filter(p -> p.getColor() == winningColor)
+                .toList();
+        
+        int totalReward = room.getTotalCoin();
+        int totalContribution = winners.stream()
+                .mapToInt(p -> p.getBingoCreated() * 3 + p.getJUsed())
+                .sum();
+        
+        for (Player winner : winners) {
+            int contribution = winner.getBingoCreated() * 3 + winner.getJUsed();
+            int reward = (int) ((double) contribution / totalContribution * totalReward);
+            winner.getUser().earnCoin(reward);
+            winner.getUser().addWin();
+        }
+        
+        // 패배 팀 처리
+        playerRepository.findByRoom(room).stream()
+                .filter(p -> p.getColor() != winningColor)
+                .forEach(p -> p.getUser().addLose());
+    }
+
+    private void notifyGameStateChange(Game game, String type, Object data) {
+        GameMessage message = new GameMessage();
+        message.setType(type);
+        message.setGameId(game.getId());
+        message.setData(data);
+        
+        messagingTemplate.convertAndSend("/topic/game/" + game.getId(), message);
     }
 }

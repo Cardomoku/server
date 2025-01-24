@@ -30,6 +30,7 @@ public class Board extends BaseTime {
     @Enumerated(EnumType.STRING)
     private Card card;
 
+    @Setter
     @Builder.Default
     @Enumerated(EnumType.STRING)
     private Color status = Color.EMPTY;
