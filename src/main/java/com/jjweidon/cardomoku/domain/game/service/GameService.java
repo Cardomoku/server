@@ -22,12 +22,11 @@ import com.jjweidon.cardomoku.domain.room.repository.RoomRepository;
 import com.jjweidon.cardomoku.domain.user.entity.User;
 import com.jjweidon.cardomoku.global.entity.enums.Color;
 import lombok.RequiredArgsConstructor;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -104,15 +103,10 @@ public class GameService {
         validateTurn(player, game);
         validateCardUsage(playerCard, board);
         
-        // 카드 사용 처리
         applyCardEffect(playerCard, board, player);
-        // 빙고 체크
         checkBingo(game, board, player);
-        // 승리 조건 확인
         checkWinCondition(game);
-        // 다음 턴 처리
         processNextTurn(game);
-        // 카드 사용 후 게임 상태 변경 알림
         notifyGameStateChange(game, "CARD_USED", BoardData.from(board));
     }
 
@@ -207,11 +201,9 @@ public class GameService {
     }
 
     private void validateCardUsage(PlayerCard playerCard, Board board) {
-        // 카드와 보드의 카드가 일치하는지 확인
         if (playerCard.getCard() != board.getCard()) {
             throw new IllegalStateException("선택한 카드와 보드의 카드가 일치하지 않습니다.");
         }
-        // 보드가 이미 사용되었는지 확인
         if (board.getStatus() != Color.EMPTY) {
             throw new IllegalStateException("이미 사용된 보드입니다.");
         }
@@ -233,16 +225,119 @@ public class GameService {
         List<Board> boards = boardRepository.findByGame(game);
         Color playerColor = player.getColor();
         int bingoCount = 0;
-        // 가로 빙고 체크
-        bingoCount += checkHorizontalBingo(boards, board.getX(), playerColor);
-        // 세로 빙고 체크
-        bingoCount += checkVerticalBingo(boards, board.getY(), playerColor);
-        // 대각선 빙고 체크
-        bingoCount += checkDiagonalBingo(boards, board.getX(), board.getY(), playerColor);
-        // 빙고 달성 시 플레이어 기여도 업데이트
+        int fourCount = 0;
+
+        // 가로, 세로, 대각선 빙고 및 4개 체크
+        bingoCount += checkLine(boards, board.getX(), board.getY(), playerColor, Direction.HORIZONTAL, 5);
+        fourCount += checkLine(boards, board.getX(), board.getY(), playerColor, Direction.HORIZONTAL, 4);
+
+        bingoCount += checkLine(boards, board.getX(), board.getY(), playerColor, Direction.VERTICAL, 5);
+        fourCount += checkLine(boards, board.getX(), board.getY(), playerColor, Direction.VERTICAL, 4);
+
+        bingoCount += checkLine(boards, board.getX(), board.getY(), playerColor, Direction.DIAGONAL, 5);
+        fourCount += checkLine(boards, board.getX(), board.getY(), playerColor, Direction.DIAGONAL, 4);
+
         if (bingoCount > 0) {
             player.addBingoCreated();
         }
+
+        if (fourCount > 0) {
+            player.addFourCreated();
+        }
+    }
+
+    private int checkLine(List<Board> boards, int x, int y, Color color, Direction direction, int targetCount) {
+        switch (direction) {
+            case HORIZONTAL:
+                return checkHorizontal(boards, x, color, targetCount);
+            case VERTICAL:
+                return checkVertical(boards, y, color, targetCount);
+            case DIAGONAL:
+                return checkDiagonal(boards, x, y, color, targetCount);
+            default:
+                throw new IllegalArgumentException("Invalid direction: " + direction);
+        }
+    }
+
+    private int checkHorizontal(List<Board> boards, int x, Color color, int targetCount) {
+        int count = 0;
+        for (int i = 0; i < 10; i++) {
+            final int index = i;
+            boolean hasChip = boards.stream()
+                    .anyMatch(b -> b.getX() == x && b.getY() == index && b.getStatus() == color);
+            if (hasChip) {
+                count++;
+                if (count >= targetCount) {
+                    return 1;
+                }
+            } else {
+                count = 0;
+            }
+        }
+        return 0;
+    }
+
+    private int checkVertical(List<Board> boards, int y, Color color, int targetCount) {
+        int count = 0;
+        for (int i = 0; i < 10; i++) {
+            final int index = i;
+            boolean hasChip = boards.stream()
+                    .anyMatch(b -> b.getX() == index && b.getY() == y && b.getStatus() == color);
+            if (hasChip) {
+                count++;
+                if (count >= targetCount) {
+                    return 1;
+                }
+            } else {
+                count = 0;
+            }
+        }
+        return 0;
+    }
+
+    private int checkDiagonal(List<Board> boards, int x, int y, Color color, int targetCount) {
+        int count = 0;
+
+        // 대각선 (\) 체크
+        for (int i = -4; i <= 4; i++) {
+            int checkX = x + i;
+            int checkY = y + i;
+            if (checkX < 0 || checkX >= 10 || checkY < 0 || checkY >= 10) {
+                continue;
+            }
+            boolean hasChip = boards.stream()
+                    .anyMatch(b -> b.getX() == checkX && b.getY() == checkY && b.getStatus() == color);
+            if (hasChip) {
+                count++;
+                if (count >= targetCount) {
+                    return 1;
+                }
+            } else {
+                count = 0;
+            }
+        }
+
+        // 대각선 (/) 체크
+        count = 0;
+        for (int i = -4; i <= 4; i++) {
+            int checkX = x - i;
+            int checkY = y + i;
+            if (checkX < 0 || checkX >= 10 || checkY < 0 || checkY >= 10) {
+                continue;
+            }
+            boolean hasChip = boards.stream()
+                    .anyMatch(b -> b.getX() == checkX && b.getY() == checkY && b.getStatus() == color);
+            if (hasChip) {
+                count++;
+                if (count >= targetCount) {
+                    return 1;
+                }
+            } else {
+                count = 0;
+            }
+        }
+
+        return 0;
     }
 
     private void checkWinCondition(Game game) {
@@ -303,9 +398,9 @@ public class GameService {
         List<Board> boards = boardRepository.findByGame(board.getGame());
         Color color = board.getStatus();
         // 가로, 세로, 대각선 빙고 체크
-        return checkHorizontalBingo(boards, board.getX(), color) > 0 ||
-               checkVerticalBingo(boards, board.getY(), color) > 0 ||
-               checkDiagonalBingo(boards, board.getX(), board.getY(), color) > 0;
+        return checkLine(boards, board.getX(), board.getY(), color, Direction.HORIZONTAL, 5) > 0 ||
+               checkLine(boards, board.getX(), board.getY(), color, Direction.VERTICAL, 5) > 0 ||
+               checkLine(boards, board.getX(), board.getY(), color, Direction.DIAGONAL, 5) > 0;
     }
 
     private void applyJCardEffect(Card card, Board board, Player player) {
@@ -326,75 +421,6 @@ public class GameService {
                 .card(newCard)
                 .build();
         playerCardRepository.save(playerCard);
-    }
-
-    private int checkHorizontalBingo(List<Board> boards, int x, Color color) {
-        long count = boards.stream()
-                .filter(b -> b.getX() == x && b.getStatus() == color)
-                .count();
-        return count >= 5 ? 1 : 0;
-    }
-
-    private int checkVerticalBingo(List<Board> boards, int y, Color color) {
-        long count = boards.stream()
-                .filter(b -> b.getY() == y && b.getStatus() == color)
-                .count();
-        return count >= 5 ? 1 : 0;
-    }
-
-    private int checkDiagonalBingo(List<Board> boards, int x, int y, Color color) {
-        int bingoCount = 0;
-        
-        // 왼쪽 위에서 오른쪽 아래로 가는 대각선 (\) 체크
-        int count = 0;
-        for (int i = -4; i <= 4; i++) {
-            int checkX = x + i;
-            int checkY = y + i;
-            if (checkX < 0 || checkX >= 10 || checkY < 0 || checkY >= 10) {
-                continue;
-            }
-            boolean hasChip = boards.stream()
-                    .anyMatch(b -> b.getX() == checkX && 
-                                 b.getY() == checkY && 
-                                 b.getStatus() == color);
-                                 
-            if (hasChip) {
-                count++;
-                if (count >= 5) {
-                    bingoCount++;
-                    break;
-                }
-            } else {
-                count = 0;
-            }
-        }
-        
-        // 오른쪽 위에서 왼쪽 아래로 가는 대각선 (/) 체크
-        count = 0;
-        for (int i = -4; i <= 4; i++) {
-            int checkX = x - i;
-            int checkY = y + i;
-            
-            if (checkX < 0 || checkX >= 10 || checkY < 0 || checkY >= 10) {
-                continue;
-            }
-            boolean hasChip = boards.stream()
-                    .anyMatch(b -> b.getX() == checkX && 
-                                 b.getY() == checkY && 
-                                 b.getStatus() == color);
-                                 
-            if (hasChip) {
-                count++;
-                if (count >= 5) {
-                    bingoCount++;
-                    break;
-                }
-            } else {
-                count = 0;
-            }
-        }
-        
-        return bingoCount;
     }
 
     private void distributeRewards(Game game, Color winningColor) {
@@ -428,5 +454,9 @@ public class GameService {
         message.setData(data);
         
         messagingTemplate.convertAndSend("/topic/game/" + game.getId(), message);
+    }
+
+    private enum Direction {
+        HORIZONTAL, VERTICAL, DIAGONAL
     }
 }

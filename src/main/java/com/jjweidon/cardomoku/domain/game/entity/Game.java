@@ -8,10 +8,9 @@ import com.jjweidon.cardomoku.global.entity.enums.Color;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.LinkedList;
+import java.util.List;
 
 @Entity
 @Getter
@@ -34,7 +33,7 @@ public class Game extends BaseTime {
 
     @JsonIgnore
     @Builder.Default
-    private Deque<Card> cardDeck = new ArrayDeque<>();
+    private Deque<Card> cardDeck = new LinkedList<>();
 
     @JsonIgnore
     @OneToMany(mappedBy = "game_id", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
