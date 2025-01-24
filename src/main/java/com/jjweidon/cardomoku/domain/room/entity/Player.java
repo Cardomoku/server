@@ -27,15 +27,29 @@ public class Player extends BaseTime {
     @JoinColumn(name = "room_id", nullable = false)
     private Room room;
 
-    private Boolean isOwner;
+    @Builder.Default
+    private Boolean isOwner = false;
 
     @Setter
     @Enumerated(EnumType.STRING)
     private Color color;
+
+    @Builder.Default
+    private Boolean isTurn = false;
 
     int fourCreated;
 
     int bingoCreated;
 
     int jUsed;
+
+    ///// 도메인 메서드 /////
+
+    public void startTurn() {
+        this.isTurn = true;
+    }
+
+    public void endTurn() {
+        this.isTurn = false;
+    }
 }

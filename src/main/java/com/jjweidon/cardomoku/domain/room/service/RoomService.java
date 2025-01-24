@@ -1,6 +1,10 @@
 package com.jjweidon.cardomoku.domain.room.service;
 
+import com.jjweidon.cardomoku.domain.game.dto.GameResponse;
+import com.jjweidon.cardomoku.domain.game.entity.Game;
 import com.jjweidon.cardomoku.domain.game.entity.enums.GameStatus;
+import com.jjweidon.cardomoku.domain.game.repository.GameRepository;
+import com.jjweidon.cardomoku.domain.game.service.GameService;
 import com.jjweidon.cardomoku.domain.room.dto.*;
 import com.jjweidon.cardomoku.domain.room.entity.Player;
 import com.jjweidon.cardomoku.domain.room.entity.Room;
@@ -13,7 +17,6 @@ import com.jjweidon.cardomoku.domain.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -22,6 +25,7 @@ public class RoomService {
 
     private final RoomRepository roomRepository;
     private final PlayerRepository playerRepository;
+    private final GameService gameService;
 
     // 방 생성
     public RoomResponse createRoom(User user, CreateRoomRequest request) {
@@ -46,21 +50,16 @@ public class RoomService {
     // 빠른 입장
     public RoomResponse quickJoinRoom(User user, RoomTypeRequest request) {
         RoomType roomType = request.getRoomType();
-        Optional<Room> roomOptional = roomRepository.findFirstByRoomTypeAndStatus(roomType, GameStatus.NOT_STARTED);
-
-        if (roomOptional.isEmpty()) {
-            throw new RoomNotFoundException();
-        }
-
-        return RoomResponse.from(roomOptional.get());
+        Room room = roomRepository.findFirstByRoomTypeAndStatus(roomType, GameStatus.NOT_STARTED)
+                .orElseThrow(RoomNotFoundException::new);
+        createPlayerForRoom(user, room, false);
+        return RoomResponse.from(room);
     }
 
     // 방 퇴장
-    public void leaveRoom(User user, String roomId) {
-        Room room = roomRepository.findById(roomId)
-                .orElseThrow(() -> new RoomNotFoundException(roomId));
-        Player player = playerRepository.findByRoomAndUser(room, user)
-                .orElseThrow(PlayerNotFoundException::new);
+    public void leaveRoom(User user) {
+        Player player = gameService.findPlayerByUser(user);
+        Room room = player.getRoom();
         room.removePlayer(player);
         playerRepository.delete(player);
     }
@@ -80,6 +79,7 @@ public class RoomService {
                 .user(user)
                 .room(room)
                 .isOwner(isOwner)
+                .isTurn(isOwner)
                 .build();
         room.addPlayer(player);
         playerRepository.save(player);

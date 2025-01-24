@@ -1,8 +1,8 @@
 package com.jjweidon.cardomoku.domain.game.entity;
 
-import com.jjweidon.cardomoku.domain.game.entity.enums.BoardStatus;
-import com.jjweidon.cardomoku.global.entity.enums.Card;
+import com.jjweidon.cardomoku.domain.game.entity.enums.Card;
 import com.jjweidon.cardomoku.global.entity.BaseTime;
+import com.jjweidon.cardomoku.global.entity.enums.Color;
 import de.huxhorn.sulky.ulid.ULID;
 import jakarta.persistence.*;
 import lombok.*;
@@ -32,5 +32,5 @@ public class Board extends BaseTime {
 
     @Builder.Default
     @Enumerated(EnumType.STRING)
-    private BoardStatus state = BoardStatus.EMPTY;
+    private Color status = Color.EMPTY;
 }

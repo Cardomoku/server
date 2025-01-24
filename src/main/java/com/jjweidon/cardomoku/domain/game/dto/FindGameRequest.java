@@ -2,12 +2,12 @@ package com.jjweidon.cardomoku.domain.game.dto;
 
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
-import com.jjweidon.cardomoku.global.dto.Response;
-import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @Getter
-@Builder
-@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
-public class UseCardResponse implements Response {
+@NoArgsConstructor
+@JsonNaming(value = PropertyNamingStrategies.SnakeCaseStrategy.class)
+public class FindGameRequest {
+    private String gameId;
 }

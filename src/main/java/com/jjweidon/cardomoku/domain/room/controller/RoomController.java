@@ -1,5 +1,6 @@
 package com.jjweidon.cardomoku.domain.room.controller;
 
+import com.jjweidon.cardomoku.domain.game.dto.GameResponse;
 import com.jjweidon.cardomoku.domain.room.dto.*;
 import com.jjweidon.cardomoku.domain.room.service.RoomService;
 import com.jjweidon.cardomoku.domain.user.entity.User;
@@ -44,9 +45,9 @@ public class RoomController {
 
     // 방 퇴장
     @DeleteMapping("/leave")
-    public ApiResponse<Response> leaveRoom(Authentication authentication, @RequestParam String roomId) {
+    public ApiResponse<Response> leaveRoom(Authentication authentication) {
         User user = (User) authentication.getPrincipal();
-        roomService.leaveRoom(user, roomId);
+        roomService.leaveRoom(user);
         return ApiResponse.noContent("방 퇴장 성공");
     }
 }

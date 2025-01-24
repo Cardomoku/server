@@ -1,13 +1,13 @@
-package com.jjweidon.cardomoku.domain.game.dto;
+package com.jjweidon.cardomoku.domain.room.dto;
 
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
-import com.jjweidon.cardomoku.global.dto.Response;
-import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @Getter
-@Builder
+@NoArgsConstructor
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
-public class UseCardResponse implements Response {
+public class StartGameRequest {
+    private String roomId;
 }

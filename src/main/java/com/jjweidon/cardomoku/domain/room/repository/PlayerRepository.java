@@ -5,8 +5,10 @@ import com.jjweidon.cardomoku.domain.room.entity.Room;
 import com.jjweidon.cardomoku.domain.user.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface PlayerRepository extends JpaRepository<Player, String> {
-    Optional<Player> findByRoomAndUser(Room room, User user);
+    Optional<Player> findByUser(User user);
+    List<Player> findByRoom(Room room);
 }

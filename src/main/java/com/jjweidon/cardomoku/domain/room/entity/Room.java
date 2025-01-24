@@ -44,6 +44,10 @@ public class Room extends BaseTime {
 
     ///// 도메인 메서드 /////
 
+    public void changeStatus(GameStatus status) {
+        this.status = status;
+    }
+
     public void addPlayer(Player player) {
         if (players.size() >= roomType.getCapacity()) {
             throw new IllegalStateException("이 방은 이미 최대 플레이어 수에 도달했습니다.");
