@@ -296,56 +296,39 @@ public class GameService {
     }
 
     private int checkDiagonal(List<Board> boards, int x, int y, Color color, int targetCount) {
-        int count = 0;
-
-        // 대각선 (\) 체크
-        for (int i = -4; i <= 4; i++) {
-            int checkX = x + i;
-            int checkY = y + i;
-            if (checkX < 0 || checkX >= 10 || checkY < 0 || checkY >= 10) {
-                continue;
-            }
-            boolean hasChip = boards.stream()
-                    .anyMatch(b -> b.getX() == checkX && b.getY() == checkY && b.getStatus() == color);
-            if (hasChip) {
-                count++;
-                if (count >= targetCount) {
-                    return 1;
-                }
-            } else {
-                count = 0;
-            }
-        }
-
-        // 대각선 (/) 체크
-        count = 0;
-        for (int i = -4; i <= 4; i++) {
-            int checkX = x - i;
-            int checkY = y + i;
-            if (checkX < 0 || checkX >= 10 || checkY < 0 || checkY >= 10) {
-                continue;
-            }
-            boolean hasChip = boards.stream()
-                    .anyMatch(b -> b.getX() == checkX && b.getY() == checkY && b.getStatus() == color);
-            if (hasChip) {
-                count++;
-                if (count >= targetCount) {
-                    return 1;
-                }
-            } else {
-                count = 0;
-            }
-        }
-
-        return 0;
+        return checkDirection(boards, x, y, color, targetCount, 1, 1) ||
+                checkDirection(boards, x, y, color, targetCount, -1, 1) ? 1 : 0;
     }
+
+    private boolean checkDirection(List<Board> boards, int x, int y, Color color, int targetCount, int dx, int dy) {
+        int count = 0;
+        for (int i = -4; i <= 4; i++) {
+            int checkX = x + i * dx;
+            int checkY = y + i * dy;
+            if (isWithinBounds(checkX, checkY) && hasChip(boards, checkX, checkY, color)) {
+                count++;
+                if (count >= targetCount) return true;
+            } else {
+                count = 0;
+            }
+        }
+        return false;
+    }
+
+    private boolean isWithinBounds(int x, int y) {
+        return x >= 0 && x < 10 && y >= 0 && y < 10;
+    }
+
+    private boolean hasChip(List<Board> boards, int x, int y, Color color) {
+        return boards.stream().anyMatch(b -> b.getX() == x && b.getY() == y && b.getStatus() == color);
+    }
+
 
     private void checkWinCondition(Game game) {
         List<Player> players = playerRepository.findByRoom(game.getRoom());
         
         for (Player player : players) {
             if (player.getBingoCreated() >= 2) {
-                // 게임 종료 처리
                 game.getRoom().changeStatus(GameStatus.TERMINATED);
                 distributeRewards(game, player.getColor());
                 notifyGameStateChange(game, "GAME_OVER", GameResultResponse.from(game, 
@@ -383,7 +366,6 @@ public class GameService {
             if (board.getStatus() == Color.EMPTY) {
                 throw new IllegalStateException("한 눈 J 카드는 이미 놓여진 칩만 제거할 수 있습니다.");
             }
-            // 빙고를 구성하는 칩인지 확인하는 로직 추가
             if (isPartOfBingo(board)) {
                 throw new IllegalStateException("이 칩은 빙고를 구성합니다.");
             }
