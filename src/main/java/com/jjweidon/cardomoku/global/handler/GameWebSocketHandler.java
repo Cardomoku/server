@@ -1,7 +1,7 @@
 package com.jjweidon.cardomoku.global.handler;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.jjweidon.cardomoku.domain.game.dto.GameMessage;
+import com.jjweidon.cardomoku.domain.dto.GameMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;

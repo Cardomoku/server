@@ -1,7 +1,7 @@
 package com.jjweidon.cardomoku.global.exception;
 
-import com.jjweidon.cardomoku.domain.room.exception.RoomNotFoundException;
-import com.jjweidon.cardomoku.domain.user.exception.UserNotFoundException;
+import com.jjweidon.cardomoku.domain.exception.RoomNotFoundException;
+import com.jjweidon.cardomoku.domain.exception.UserNotFoundException;
 import com.jjweidon.cardomoku.global.dto.ApiResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ExceptionHandler;
